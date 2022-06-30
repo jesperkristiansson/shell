@@ -11,17 +11,16 @@ int fetch_line(char *str_ptr){  //improve handling of overflow
     int i = 0;
     int c;
     printf(PROMPT);
-    while((c = getchar()) != '\n' && i < MAXBUF-1){
+    while((c = getchar()) != '\n'){
         if(c == EOF){
             putchar('\n');
             return EOF;
-        } else{
+        } else if(i < MAXBUF-1){
             str_ptr[i++] = (char) c;
         }
     }
     if(i >= MAXBUF-1){
         error("Too many tokens\n");
-        fflush(stdin);
         return fetch_line(str_ptr);
     }
     str_ptr[i++] = '\0';
