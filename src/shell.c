@@ -4,15 +4,15 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <stdlib.h>
+#include <errno.h>
 
 #define MAXBUF 512
-#define MAXARGS 100
+#define MAXARGS 128
+#define MAXTOKSIZE 64 
 #define PROMPT "> "
 
-static char *input_pos;
-
-void init_path(){
-
+void init(){
 }
 
 bool end_of_token(char c){
@@ -26,22 +26,12 @@ bool end_of_token(char c){
         case '<':
         case '|':
         case '&':
+        case '\"':
             return true;
         default:
             return false;
     }
 }
-
-/*int get_token(char *str_ptr, char **token_ptr){
-    while(*input_pos == ' ' || *input_pos == '\t'){
-        input_pos++;
-    }
-    while(!end_of_token(*input_pos)){
-        *token_ptr++ = *input_pos++;
-    }
-    return 0;
-}
-*/
 
 void error(const char *msg){
     printf("%s", msg);
@@ -50,7 +40,6 @@ void error(const char *msg){
 int fetch_line(char *str_ptr){
     int i = 0;
     int c;
-    input_pos = str_ptr;
     printf(PROMPT);
     while((c = getchar()) != '\n'){
         if(c == EOF){
@@ -68,10 +57,90 @@ int fetch_line(char *str_ptr){
     return i;
 }
 
+int tokenize(char *str, char **tokens_ptr){
+    int i = 0;
+    int token_i;
+    for(int pos = 0; pos < MAXBUF;){
+        while(str[pos] == ' ' || str[pos] == '\t'){
+            pos++;
+        }
+        token_i = 0;
+        switch (str[pos]){
+            case ';':
+            case '>':
+            case '<':
+            case '|':
+            case '&':
+                tokens_ptr[i][token_i++] = str[pos++];
+                break;
+            case '\0':
+                return i;
+            case '\"':
+                while(str[++pos] != '\"'){
+                    if(str[pos] == '\0'){
+                        error("No closing \"\n");
+                        return -1;
+                    }
+                    tokens_ptr[i][token_i++] = str[pos];
+                }
+                ++pos;
+                break;
+            default:
+                while(!end_of_token(str[pos])){
+                    tokens_ptr[i][token_i++] = str[pos++];
+                }
+                break;
+        }
+        tokens_ptr[i++][token_i] = '\0';
+    }
+    error("too long input\n");
+    return -1;
+}
+
+void cd(int argc, char **argv){
+    char dest[MAXBUF];
+    static char prev_dir[MAXBUF] = "";
+    if(argc == 1){
+        strncpy(dest, getenv("HOME"), MAXBUF);
+    } else if(argc == 2){
+        if(argv[1][0] == '-'){
+            if(prev_dir[0] == '\0'){
+                error("No previous directory\n");
+                return;
+            }
+            strncpy(dest, prev_dir, MAXBUF);
+        } else{
+            getcwd(dest, MAXBUF);
+            strcat(dest, "/");
+            strncat(dest, argv[1], MAXBUF-strlen(dest)-strlen(argv[1]));
+        }
+    } else{
+        error("Too many arguments to cd\n");
+        return;
+    }
+    char current_wd[MAXBUF];
+    getcwd(current_wd, MAXBUF);
+    if(chdir(dest)){
+        error("Invalid path\n");
+    } else{
+        strncpy(prev_dir, current_wd, MAXBUF);
+    }
+    //printf("cwd: %s\n", getcwd(NULL, 0));
+}
+
 void run_program(int argc, char **argv, bool foreground){
     pid_t pid = fork();
     if(pid == 0){
-        execvp(argv[0], argv);
+        if(execvp(argv[0], argv)){
+            printf("%s\n", getenv("PATH"));
+            error("execvp failed\n");
+            printf("%s\n", strerror(errno));
+            return;
+        }
+    }
+    if(pid < 0){
+        error("fork failed\n");
+        return;
     }
     if(foreground){
         int wstatus;
@@ -79,22 +148,36 @@ void run_program(int argc, char **argv, bool foreground){
     }
 }
 
-void parse_line(char *str_ptr){
-    char *argv[MAXARGS];
-    //get_token(str_ptr, &argv[0]);
-    if(strncmp("ls", str_ptr, 3) == 0){
-        argv[0] = "ls";
-        argv[1] = NULL;
-        run_program(1, argv, 1);
+void execute(int argc, char **tokens){
+    char *argv[argc+1];
+    for(int i = 0; i < argc; i++){
+        argv[i] = tokens[i];
+    }
+    argv[argc] = NULL;
+    if(strncmp(argv[0], "cd", 3) == 0){
+        cd(argc, argv);
+    } else{
+        run_program(argc, argv, true);
     }
 }
 
 int main(int argc, char **argv){
-    init_path();
+    init();
 
     char input[MAXBUF];
+    char *tokens[MAXARGS];
+    for(int i = 0; i < MAXARGS; i++){
+        tokens[i] = malloc(sizeof(char)*MAXTOKSIZE);
+    }
     while(fetch_line(input) != EOF){
-        parse_line(input);
+        int num = tokenize(input, tokens);
+        for(int i = 0; i < num; i++){
+            printf("%s\n", tokens[i]);
+        }
+        execute(num, tokens);
+    }
+    for(int i = 0; i < MAXARGS; i++){
+        free(tokens[i]);
     }
     return 0;
 }
