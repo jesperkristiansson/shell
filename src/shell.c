@@ -58,40 +58,44 @@ int fetch_line(char *str_ptr){
 }
 
 int tokenize(char *str, char **tokens_ptr){
+    static char token_buf[MAXBUF+MAXARGS]; //max sife of input + a '\0' for every token
     int i = 0;
-    int token_i;
+    int token_i = 0;
     for(int pos = 0; pos < MAXBUF;){
         while(str[pos] == ' ' || str[pos] == '\t'){
             pos++;
         }
-        token_i = 0;
         switch (str[pos]){
             case ';':
             case '>':
             case '<':
             case '|':
             case '&':
-                tokens_ptr[i][token_i++] = str[pos++];
+                tokens_ptr[i] = &token_buf[token_i];
+                token_buf[token_i++] = str[pos++];
                 break;
             case '\0':
                 return i;
             case '\"':
+                tokens_ptr[i] = &token_buf[token_i];
                 while(str[++pos] != '\"'){
                     if(str[pos] == '\0'){
                         error("No closing \"\n");
                         return -1;
                     }
-                    tokens_ptr[i][token_i++] = str[pos];
+                    token_buf[token_i++] = str[pos++];
                 }
                 ++pos;
                 break;
             default:
+                tokens_ptr[i] = &token_buf[token_i];
                 while(!end_of_token(str[pos])){
-                    tokens_ptr[i][token_i++] = str[pos++];
+                    token_buf[token_i++] = str[pos++];
                 }
                 break;
         }
-        tokens_ptr[i++][token_i] = '\0';
+        token_buf[token_i++] = '\0';
+        i++;
     }
     error("too long input\n");
     return -1;
@@ -125,7 +129,6 @@ void cd(int argc, char **argv){
     } else{
         strncpy(prev_dir, current_wd, MAXBUF);
     }
-    //printf("cwd: %s\n", getcwd(NULL, 0));
 }
 
 void run_program(int argc, char **argv, bool foreground){
@@ -166,18 +169,12 @@ int main(int argc, char **argv){
 
     char input[MAXBUF];
     char *tokens[MAXARGS];
-    for(int i = 0; i < MAXARGS; i++){
-        tokens[i] = malloc(sizeof(char)*MAXTOKSIZE);
-    }
     while(fetch_line(input) != EOF){
         int num = tokenize(input, tokens);
         for(int i = 0; i < num; i++){
             printf("%s\n", tokens[i]);
         }
         execute(num, tokens);
-    }
-    for(int i = 0; i < MAXARGS; i++){
-        free(tokens[i]);
     }
     return 0;
 }
