@@ -37,10 +37,16 @@ void error(const char *msg){
     printf("%s", msg);
 }
 
+static char *current_directory(){
+    static char current_dir[MAXBUF];
+    getcwd(current_dir, MAXBUF);
+    return current_dir;
+}
+
 int fetch_line(char *str_ptr){
     int i = 0;
     int c;
-    printf(PROMPT);
+    printf("\033[1;34m%s\033[0m%s",current_directory(), PROMPT);
     while((c = getchar()) != '\n'){
         if(c == EOF){
             putchar('\n');
@@ -118,24 +124,26 @@ void cd(int argc, char **argv){
         error("Too many arguments to cd\n");
         return;
     }
-    char current_wd[MAXBUF];
-    getcwd(current_wd, MAXBUF);
+    char *cwd = current_directory();
     if(chdir(dest)){
         error("Invalid path\n");
     } else{
-        strncpy(prev_dir, current_wd, MAXBUF);
+        strncpy(prev_dir, cwd, MAXBUF);
     }
-    //printf("cwd: %s\n", getcwd(NULL, 0));
 }
 
 void run_program(int argc, char **argv, bool foreground){
+    if(strncmp(argv[0], "cd", 3) == 0){
+        cd(argc, argv);
+        return;
+    }
     pid_t pid = fork();
     if(pid == 0){
         if(execvp(argv[0], argv)){
             printf("%s\n", getenv("PATH"));
             error("execvp failed\n");
             printf("%s\n", strerror(errno));
-            return;
+            exit(-1);
         }
     }
     if(pid < 0){
@@ -154,11 +162,7 @@ void execute(int argc, char **tokens){
         argv[i] = tokens[i];
     }
     argv[argc] = NULL;
-    if(strncmp(argv[0], "cd", 3) == 0){
-        cd(argc, argv);
-    } else{
-        run_program(argc, argv, true);
-    }
+    run_program(argc, argv, true);
 }
 
 int main(int argc, char **argv){
@@ -171,10 +175,18 @@ int main(int argc, char **argv){
     }
     while(fetch_line(input) != EOF){
         int num = tokenize(input, tokens);
-        for(int i = 0; i < num; i++){
-            printf("%s\n", tokens[i]);
+        #ifdef DEBUG
+            printf("\033[0;33m");   //yellow for debug
+            printf("Tokens generated:\n");
+            for(int i = 0; i < num; i++){
+                printf("%s\n", tokens[i]);
+            }
+            printf("\033[0m");
+            fflush(stdout);
+        #endif
+        if(num){
+            execute(num, tokens);
         }
-        execute(num, tokens);
     }
     for(int i = 0; i < MAXARGS; i++){
         free(tokens[i]);

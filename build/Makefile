@@ -2,5 +2,8 @@ CC = gcc
 CFLAGS = -g -Wall
 SRC=../src
 
-shell : $(SRC)/shell.c
+production : $(SRC)/shell.c
 	$(CC) $(CFLAGS) -o shell $(SRC)/shell.c
+
+debug : $(SRC)/shell.c
+	$(CC) $(CFLAGS) -DDEBUG -o shell $(SRC)/shell.c
