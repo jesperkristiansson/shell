@@ -11,6 +11,7 @@
 #define MAXARGS 128
 #define MAXTOKSIZE 64 
 #define PROMPT "> "
+#define PRINT_ERROR printf("%s\n", strerror(errno))
 
 void init(){
 }
@@ -89,7 +90,7 @@ int tokenize(char *str, char **tokens_ptr){
                         error("No closing \"\n");
                         return -1;
                     }
-                    token_buf[token_i++] = str[pos++];
+                    token_buf[token_i++] = str[pos];
                 }
                 ++pos;
                 break;
@@ -136,22 +137,37 @@ void cd(int argc, char **argv){
     }
 }
 
-void run_program(int argc, char **argv, bool foreground){
-    if(strncmp(argv[0], "cd", 3) == 0){
+void help(){
+    error("help-command not yet implemented\n");
+}
+
+bool check_builtins(int argc, char **argv){
+    char *progname = argv[0];
+    if(strcmp(progname, "cd") == 0){
         cd(argc, argv);
+        return true;
+    } else if(strcmp(progname, "help") == 0){
+        help();
+        return true;
+    } else if(strcmp(progname, "exit") == 0){
+        exit(0);
+    }
+    return false;
+}
+
+void run_program(int argc, char **argv, bool foreground){
+    if(check_builtins(argc, argv)){
         return;
     }
     pid_t pid = fork();
     if(pid == 0){
         if(execvp(argv[0], argv)){
-            printf("%s\n", getenv("PATH"));
-            error("execvp failed\n");
-            printf("%s\n", strerror(errno));
+            PRINT_ERROR;
             exit(-1);
         }
     }
     if(pid < 0){
-        error("fork failed\n");
+        PRINT_ERROR;
         return;
     }
     if(foreground){
@@ -185,7 +201,7 @@ int main(int argc, char **argv){
             printf("\033[0m");
             fflush(stdout);
         #endif
-        if(num){
+        if(num > 0){
             execute(num, tokens);
         }
     }
