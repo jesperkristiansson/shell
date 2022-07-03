@@ -4,6 +4,8 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include <stdlib.h>
 #include <errno.h>
 
@@ -12,6 +14,20 @@
 #define MAXTOKSIZE 64 
 #define PROMPT "> "
 #define PRINT_ERROR printf("%s\n", strerror(errno))
+#define DEF_PERM 0644
+
+static int str_pos;
+static int token_pos;
+
+typedef enum{
+    INPUT,
+    OUTPUT,
+    PIPE,
+    NEWLINE,
+    SEMICOLON,
+    AMPERSAND,
+    NORMAL
+} token_t;
 
 void init(){
 }
@@ -38,7 +54,7 @@ void error(const char *msg){
     printf("%s", msg);
 }
 
-static char *current_directory(){
+char *current_directory(){
     static char current_dir[MAXBUF];
     getcwd(current_dir, MAXBUF);
     return current_dir;
@@ -48,12 +64,18 @@ int fetch_line(char *str_ptr){
     int i = 0;
     int c;
     printf("\033[1;34m%s\033[0m%s",current_directory(), PROMPT);
-    while((c = getchar()) != '\n'){
+    fflush(stdout);
+    str_pos = 0;
+    token_pos = 0;
+    while((c = getchar())){
         if(c == EOF){
             putchar('\n');
             return EOF;
         } else if(i < MAXBUF-1){
             str_ptr[i++] = (char) c;
+        }
+        if(c == '\n'){
+            break;
         }
     }
     if(i >= MAXBUF-1){
@@ -64,48 +86,58 @@ int fetch_line(char *str_ptr){
     return i;
 }
 
-int tokenize(char *str, char **tokens_ptr){
-    static char token_buf[MAXBUF+MAXARGS]; //max sife of input + a '\0' for every token
-    int i = 0;
-    int token_i = 0;
-    for(int pos = 0; pos < MAXBUF;){
-        while(str[pos] == ' ' || str[pos] == '\t'){
-            pos++;
-        }
-        switch (str[pos]){
-            case ';':
-            case '>':
-            case '<':
-            case '|':
-            case '&':
-                tokens_ptr[i] = &token_buf[token_i];
-                token_buf[token_i++] = str[pos++];
-                break;
-            case '\0':
-                return i;
-            case '\"':
-                tokens_ptr[i] = &token_buf[token_i];
-                while(str[++pos] != '\"'){
-                    if(str[pos] == '\0'){
-                        error("No closing \"\n");
-                        return -1;
-                    }
-                    token_buf[token_i++] = str[pos];
-                }
-                ++pos;
-                break;
-            default:
-                tokens_ptr[i] = &token_buf[token_i];
-                while(!end_of_token(str[pos])){
-                    token_buf[token_i++] = str[pos++];
-                }
-                break;
-        }
-        token_buf[token_i++] = '\0';
-        i++;
+token_t get_token(char *str, char **token_ptr){
+    static char token_buf[MAXBUF+MAXARGS];
+    token_t type;
+    while(str[str_pos] == ' ' || str[str_pos] == '\t'){
+        str_pos++;
     }
-    error("too long input\n");
-    return -1;
+    *token_ptr = &token_buf[token_pos];
+    switch (str[str_pos]){
+        case ';':
+            token_buf[token_pos++] = str[str_pos++];
+            type = SEMICOLON;
+            break;
+        case '>': 
+            token_buf[token_pos++] = str[str_pos++];
+            type = OUTPUT;
+            break;
+        case '<':
+            token_buf[token_pos++] = str[str_pos++];
+            type = INPUT;
+            break;
+        case '|':
+            token_buf[token_pos++] = str[str_pos++];
+            type = PIPE;
+            break;
+        case '\n':
+            token_buf[token_pos++] = str[str_pos++];
+            type = NEWLINE;
+            break;
+        case '&':
+            token_buf[token_pos++] = str[str_pos++];
+            type = AMPERSAND;
+            break;
+        case '\"':
+            type = NORMAL;
+            while(str[++str_pos] != '\"'){
+                if(str_pos >= MAXBUF){
+                    error("No closing \"\n");
+                    return -1;
+                }
+                token_buf[token_pos++] = str[str_pos];
+            }
+            ++str_pos;
+            break;
+        default:
+            type = NORMAL;
+            while(!end_of_token(str[str_pos])){
+                token_buf[token_pos++] = str[str_pos++];
+            }
+            break;
+    }
+    token_buf[token_pos++] = '\0';
+    return type;
 }
 
 void cd(int argc, char **argv){
@@ -155,12 +187,14 @@ bool check_builtins(int argc, char **argv){
     return false;
 }
 
-void run_program(int argc, char **argv, bool foreground){
+void run_program(int argc, char **argv, bool foreground, int input_fd, int output_fd){
     if(check_builtins(argc, argv)){
         return;
     }
     pid_t pid = fork();
     if(pid == 0){
+        dup2(input_fd, STDIN_FILENO);
+        dup2(output_fd, STDOUT_FILENO);
         if(execvp(argv[0], argv)){
             PRINT_ERROR;
             exit(-1);
@@ -173,37 +207,95 @@ void run_program(int argc, char **argv, bool foreground){
     if(foreground){
         int wstatus;
         waitpid(pid, &wstatus, 0);
+    } else{
+        printf("Background process started with pid: %d\n", pid);
     }
 }
 
-void execute(int argc, char **tokens){
-    char *argv[argc+1];
-    for(int i = 0; i < argc; i++){
-        argv[i] = tokens[i];
+void parse_line(char *input){
+    char *tokens[MAXARGS];
+    token_t type;
+    int argc = 0;
+    bool foreground = 1;
+    bool doing_pipe = false;
+    int input_fd = STDIN_FILENO;
+    int output_fd = STDOUT_FILENO;
+    int pipe_fd[2];
+    for(;;){
+        type = get_token(input, &tokens[argc]);
+        switch (type){
+            case NORMAL:
+                argc++;
+                break;
+            case INPUT:
+                type = get_token(input, &tokens[argc]);
+                if(type != NORMAL){
+                    printf("Expected filename but got %s\n", tokens[argc]);
+                    return;
+                }
+                input_fd = open(tokens[argc], O_RDONLY);
+                if(input_fd < 0){
+                    printf("Cannot read from %s", tokens[argc]);
+                    return;
+                }
+                break;
+            case OUTPUT:
+                type = get_token(input, &tokens[argc]);
+                if(type != NORMAL){
+                    printf("Expected filename but got %s\n", tokens[argc]);
+                    return;
+                }
+                output_fd = open(tokens[argc], O_WRONLY | O_CREAT, DEF_PERM);
+                if(output_fd < 0){
+                    printf("Cannot write to %s", tokens[argc]);
+                    return;
+                }
+                break;
+            case PIPE:
+                pipe(pipe_fd);
+                output_fd = pipe_fd[1];
+                doing_pipe = true;
+            case AMPERSAND:
+                foreground = 0;
+            case NEWLINE:
+            case SEMICOLON:
+                if(argc == 0){
+                    return;
+                }
+                tokens[argc] = NULL;
+                fflush(stdout);
+                run_program(argc, tokens, foreground, input_fd, output_fd);
+                argc = 0;
+                foreground = 1;
+                if(input_fd != STDIN_FILENO){
+                    close(input_fd);
+                    input_fd = STDIN_FILENO;
+                }
+                if(output_fd != STDOUT_FILENO){
+                    close(output_fd);
+                    output_fd = STDOUT_FILENO;
+                }
+                if(doing_pipe){
+                    input_fd = pipe_fd[0];
+                    doing_pipe = false;
+                }
+                if(type == NEWLINE){
+                    return;
+                }
+                break;
+            default:
+                error("No matching token type\n");
+        }
     }
-    argv[argc] = NULL;
-    run_program(argc, argv, true);
 }
 
 int main(int argc, char **argv){
     init();
 
     char input[MAXBUF];
-    char *tokens[MAXARGS];
     while(fetch_line(input) != EOF){
-        int num = tokenize(input, tokens);
-        #ifdef DEBUG
-            printf("\033[0;33m");   //yellow for debug
-            printf("Tokens generated:\n");
-            for(int i = 0; i < num; i++){
-                printf("%s\n", tokens[i]);
-            }
-            printf("\033[0m");
-            fflush(stdout);
-        #endif
-        if(num > 0){
-            execute(num, tokens);
-        }
+        parse_line(input);
+        waitpid(-1, NULL, WNOHANG);
     }
     return 0;
 }
