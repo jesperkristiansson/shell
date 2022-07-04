@@ -303,6 +303,9 @@ void parse_line(char *input){
                 if(argc == 0){
                     return;
                 }
+                if(strcmp(tokens[0], "ls") == 0){
+                    tokens[argc++] = "--color=auto";
+                }   
                 tokens[argc] = NULL;
                 fflush(stdout);
                 run_program(argc, tokens, foreground, input_fd, output_fd);
