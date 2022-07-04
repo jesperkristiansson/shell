@@ -12,7 +12,7 @@
 #define MAXBUF 512
 #define MAXARGS 128
 #define MAXTOKSIZE 64 
-#define PROMPT "> "
+#define DEF_PROMPT "> "
 #define PRINT_ERROR printf("%s\n", strerror(errno))
 #define DEF_PERM 0644
 
@@ -26,6 +26,7 @@ typedef enum{
     NEWLINE,
     SEMICOLON,
     AMPERSAND,
+    VAR,
     NORMAL
 } token_t;
 
@@ -60,11 +61,33 @@ char *current_directory(){
     return current_dir;
 }
 
+static int starts_with(char *full_str, char *start){
+    int i;
+    for(i = 0; start[i] != '\0'; ++i){
+        if(full_str[i] != start[i]){
+            return -1;
+        }
+    }
+    return i;
+}
+
+static void print_prompt(){
+    char cwd[MAXBUF];
+    char *to_print = cwd;
+    getcwd(cwd, MAXBUF);
+    int i;
+    if((i = starts_with(cwd, getenv("HOME"))) >= 0){
+        to_print = &to_print[i-1];
+        to_print[0] = '~';
+    }
+    printf("\033[1;34m%s\033[0m%s", to_print, DEF_PROMPT);
+    fflush(stdout);
+}
+
 int fetch_line(char *str_ptr){
     int i = 0;
     int c;
-    printf("\033[1;34m%s\033[0m%s",current_directory(), PROMPT);
-    fflush(stdout);
+    print_prompt();
     str_pos = 0;
     token_pos = 0;
     while((c = getchar())){
@@ -129,6 +152,20 @@ token_t get_token(char *str, char **token_ptr){
             }
             ++str_pos;
             break;
+        case '$':       //add support for $(cmd) to execute cmd and use the output as a token
+            type = VAR;
+            ++str_pos;
+            if(str[str_pos] == '{'){
+                while(str[++str_pos] != '}'){
+                    token_buf[token_pos++] = str[str_pos];
+                }
+                ++str_pos;
+            } else{
+                 while(!end_of_token(str[str_pos])){
+                    token_buf[token_pos++] = str[str_pos++];
+                }
+            }
+            break;
         default:
             type = NORMAL;
             while(!end_of_token(str[str_pos])){
@@ -152,6 +189,8 @@ void cd(int argc, char **argv){
                 return;
             }
             strncpy(dest, prev_dir, MAXBUF);
+        } else if(argv[1][0] == '/'){
+            strcpy(dest, argv[1]);
         } else{
             getcwd(dest, MAXBUF);
             strcat(dest, "/");
@@ -224,6 +263,8 @@ void parse_line(char *input){
     for(;;){
         type = get_token(input, &tokens[argc]);
         switch (type){
+            case VAR:
+                tokens[argc] = getenv(tokens[argc]);
             case NORMAL:
                 argc++;
                 break;
