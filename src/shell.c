@@ -212,6 +212,25 @@ void help(){
     error("help-command not yet implemented\n");
 }
 
+void set_env_var(int argc, char **argv){
+    if(argc < 2){
+        error("export doesn't support less than 2 arguments");
+        return;
+    }
+    for(int n = 1; n < argc; n++){
+        char *arg = argv[n]; 
+        int i = 0;
+        while(arg[i] != '='){
+            if(arg[i++] == '\0'){
+                printf("invalid assigment at position %d", n);
+                continue;
+            }
+        }
+        arg[i++] = '\0';
+        setenv(arg, &arg[i], 1);
+    }
+}
+
 bool check_builtins(int argc, char **argv){
     char *progname = argv[0];
     if(strcmp(progname, "cd") == 0){
@@ -222,6 +241,9 @@ bool check_builtins(int argc, char **argv){
         return true;
     } else if(strcmp(progname, "exit") == 0){
         exit(0);
+    } else if(strcmp(progname, "export") == 0){
+        set_env_var(argc, argv);
+        return true;
     }
     return false;
 }
