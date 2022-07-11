@@ -1,9 +1,11 @@
 CC = gcc
-CFLAGS = -g -Wall
+IGNOREWARNINGS = -Wno-implicit-fallthrough
+CFLAGS = -g -Wall -Wextra $(IGNOREWARNINGS)
 SRC=../src
+SRCFILES=$(SRC)/*.c
 
-production : $(SRC)/shell.c
-	$(CC) $(CFLAGS) -o shell $(SRC)/shell.c
+debug : $(SRCFILES)
+	$(CC) $(CFLAGS) -DDEBUG -o shell $(SRCFILES)
 
-debug : $(SRC)/shell.c
-	$(CC) $(CFLAGS) -DDEBUG -o shell $(SRC)/shell.c
+production : $(SRCFILES)
+	$(CC) $(CFLAGS)  -o shell $(SRCFILES)
