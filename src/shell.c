@@ -8,6 +8,7 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <wordexp.h>
 
 #define MAXBUF 512
 #define MAXARGS 128
@@ -26,8 +27,8 @@ typedef enum{
     NEWLINE,
     SEMICOLON,
     AMPERSAND,
-    VAR,
-    NORMAL
+    NORMAL,
+    RAW
 } token_t;
 
 void init(){
@@ -142,7 +143,7 @@ token_t get_token(char *str, char **token_ptr){
             type = AMPERSAND;
             break;
         case '\"':
-            type = NORMAL;
+            type = RAW;
             while(str[++str_pos] != '\"'){
                 if(str_pos >= MAXBUF){
                     error("No closing \"\n");
@@ -151,20 +152,6 @@ token_t get_token(char *str, char **token_ptr){
                 token_buf[token_pos++] = str[str_pos];
             }
             ++str_pos;
-            break;
-        case '$':       //add support for $(cmd) to execute cmd and use the output as a token
-            type = VAR;
-            ++str_pos;
-            if(str[str_pos] == '{'){
-                while(str[++str_pos] != '}'){
-                    token_buf[token_pos++] = str[str_pos];
-                }
-                ++str_pos;
-            } else{
-                 while(!end_of_token(str[str_pos])){
-                    token_buf[token_pos++] = str[str_pos++];
-                }
-            }
             break;
         default:
             type = NORMAL;
@@ -276,6 +263,8 @@ void run_program(int argc, char **argv, bool foreground, int input_fd, int outpu
 void parse_line(char *input){
     char *tokens[MAXARGS];
     token_t type;
+    wordexp_t exp = {0, 0, 0};
+    size_t existing_strs;
     int argc = 0;
     bool foreground = 1;
     bool doing_pipe = false;
@@ -285,10 +274,18 @@ void parse_line(char *input){
     for(;;){
         type = get_token(input, &tokens[argc]);
         switch (type){
-            case VAR:
-                tokens[argc] = getenv(tokens[argc]);
+            case RAW:
+                ++argc;
+                break;
             case NORMAL:
-                argc++;
+                existing_strs = exp.we_wordc;
+                if(wordexp(tokens[argc], &exp, WRDE_APPEND)){
+                    printf("word expansion failed\n");
+                    return;
+                }
+                for(size_t i = existing_strs; i < exp.we_wordc; ++i){
+                    tokens[argc++] = exp.we_wordv[i];
+                }
                 break;
             case INPUT:
                 type = get_token(input, &tokens[argc]);
@@ -332,6 +329,8 @@ void parse_line(char *input){
                 fflush(stdout);
                 run_program(argc, tokens, foreground, input_fd, output_fd);
                 argc = 0;
+                wordfree(&exp);
+                exp.we_wordc = 0;
                 foreground = 1;
                 if(input_fd != STDIN_FILENO){
                     close(input_fd);
