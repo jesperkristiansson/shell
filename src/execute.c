@@ -14,6 +14,11 @@
 
 #define DEF_PERM 0644
 
+void restart(){
+    char *argv[2] = {"shell", NULL};
+    execvp(argv[0], argv);
+}
+
 void cd(int argc, char **argv){
     char dest[MAXBUF];
     static char prev_dir[MAXBUF] = "";
@@ -81,6 +86,9 @@ bool check_builtins(int argc, char **argv){
         quit();
     } else if(strcmp(progname, "export") == 0){
         set_env_var(argc, argv);
+        return true;
+    }else if(strcmp(progname, "restart") == 0){
+        restart();
         return true;
     }
     return false;

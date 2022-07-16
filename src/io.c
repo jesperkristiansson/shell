@@ -31,6 +31,7 @@ typedef enum{
 
 static int cpos = 0;
 static int prompt_size = 0;
+static int input_size = 0;
 
 static struct termios orig_term;
 
@@ -74,7 +75,7 @@ static void print_prompt(){
     prompt_size = strlen(to_print) + sizeof(DEF_PROMPT) - 1;
 }
 
-static bool handle_arrow_key(arrowKey key, int right_lim){
+static bool handle_arrow_key(arrowKey key){
     switch (key){
         case ARROW_LEFT:
             if(cpos > prompt_size){
@@ -84,7 +85,7 @@ static bool handle_arrow_key(arrowKey key, int right_lim){
             }
             break;
         case ARROW_RIGHT:
-            if(cpos < right_lim){
+            if(cpos < prompt_size + input_size){
                 CURSOR_FORWARD(1);
                 ++cpos;
                 return true;
@@ -101,7 +102,7 @@ int fetch_line(char *str_ptr){  //currently responsible both fetching text AND h
     int c;
     print_prompt();
     cpos = prompt_size;
-    size_t input_size = prompt_size;
+    input_size = 0;
     str_pos = 0;
     token_pos = 0;
     while((c = getchar())){
@@ -120,19 +121,19 @@ int fetch_line(char *str_ptr){  //currently responsible both fetching text AND h
                     if(buf[0] == '['){
                         buf[1] = getchar();
                         if(buf[1] == 'D'){
-                            handle_arrow_key(ARROW_LEFT, input_size);
+                            handle_arrow_key(ARROW_LEFT);
                         } else if(buf[1] == 'C'){
-                            handle_arrow_key(ARROW_RIGHT, input_size);
+                            handle_arrow_key(ARROW_RIGHT);
                         }
                     }
                 }
                 break;
             case BACKSPACE:
-                if(handle_arrow_key(ARROW_LEFT, input_size)){
+                if(handle_arrow_key(ARROW_LEFT)){
                     int rel_pos = cpos-prompt_size;
                     memmove(&str_ptr[rel_pos], &str_ptr[rel_pos+1], input_size-rel_pos);
                     --input_size;
-                    str_ptr[input_size-prompt_size+1] = '\0';
+                    str_ptr[input_size] = '\0';
                     printf(CLEAR_AFTER_CURSOR SAVE_CURSOR "%s" RESTORE_CURSOR, &str_ptr[rel_pos]);
                 }
                 break;
@@ -140,13 +141,13 @@ int fetch_line(char *str_ptr){  //currently responsible both fetching text AND h
                 if(!iscntrl(c) || c == '\n'){
                     if(input_size < MAXBUF-1){
                         if(c == '\n'){
-                            str_ptr[input_size-prompt_size] = '\n';
+                            str_ptr[input_size] = '\n';
                         } else{
                             int rel_pos = cpos-prompt_size;
                             memmove(&str_ptr[rel_pos+1], &str_ptr[rel_pos], MAX(input_size-rel_pos, 0));    //size +1?
                             str_ptr[rel_pos] = (char) c;
-                            str_ptr[input_size-prompt_size+1] = '\0';
-                            //printf(CLEAR_AFTER_CURSOR SAVE_CURSOR "%s" RESTORE_CURSOR, &str_ptr[rel_pos]);
+                            str_ptr[input_size+1] = '\0';
+                            printf(CLEAR_AFTER_CURSOR SAVE_CURSOR "%s" RESTORE_CURSOR, &str_ptr[rel_pos]);
                         }
                         ++input_size;
                     }
@@ -163,6 +164,6 @@ int fetch_line(char *str_ptr){  //currently responsible both fetching text AND h
         print_error("Too many tokens\n");
         return fetch_line(str_ptr);
     }
-    str_ptr[input_size-prompt_size] = '\0';
-    return input_size-prompt_size;
+    str_ptr[input_size] = '\0';
+    return input_size;
 }
