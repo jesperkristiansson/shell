@@ -2,6 +2,7 @@
 #include "globals.h"
 #include "tokens.h"
 #include "error.h"
+#include "quit.h"
 #include <wordexp.h>
 #include <stdbool.h>
 #include <unistd.h>
@@ -77,7 +78,7 @@ bool check_builtins(int argc, char **argv){
         help();
         return true;
     } else if(strcmp(progname, "exit") == 0){
-        exit(0);
+        quit();
     } else if(strcmp(progname, "export") == 0){
         set_env_var(argc, argv);
         return true;
