@@ -6,6 +6,7 @@
 
 void init(){
     init_terminal();
+    get_terminal_size();
 }
 
 int main(){
@@ -15,6 +16,6 @@ int main(){
     while(fetch_line(input) != EOF){
         parse_line(input);
     }
-    quit();
+    quit(0);
     return 0;
 }

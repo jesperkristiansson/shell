@@ -8,12 +8,14 @@
 #include <ctype.h>
 #include <string.h>
 #include <stdbool.h>
+#include <sys/ioctl.h>
 
 #define DEF_PROMPT "> "
 
 #define MAX(x, y) ((x) > (y) ? (x) : (y))
 #define CURSOR_FORWARD(x) printf("\033[%dC", (x))
 #define CURSOR_BACKWARD(x) printf("\033[%dD", (x))
+#define CURSOR_TO_POS(x, y) printf("\033[%d;%dH", (x), (y))
 #define CLEAR_AFTER_CURSOR "\033[J"
 #define SAVE_CURSOR "\033[s"
 #define RESTORE_CURSOR "\033[u"
@@ -33,6 +35,8 @@ static int cpos = 0;
 static int prompt_size = 0;
 static int input_size = 0;
 
+static int cols_size = 0;
+
 static struct termios orig_term;
 
 void restore_terminal(){
@@ -49,6 +53,15 @@ void init_terminal(){
     raw.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
 
     tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
+}
+
+void get_terminal_size(){   //add manual calculation of size when ioctl fails
+    struct winsize wz;
+
+    if(ioctl(STDOUT_FILENO, TIOCGWINSZ, &wz) < 0 || wz.ws_col == 0){
+        quit(-1);
+    }
+    cols_size = wz.ws_col;
 }
 
 static int starts_with(char *full_str, char *start){
@@ -75,18 +88,52 @@ static void print_prompt(){
     prompt_size = strlen(to_print) + sizeof(DEF_PROMPT) - 1;
 }
 
-static bool handle_arrow_key(arrowKey key){
+static int cursor_col_position(int *row, int *col){
+    char buf[32];
+
+    printf("\033[6n");
+    //fflush(stdout);
+    int i;
+    for(i = 0; i < 32; ++i){
+        buf[i] = getchar();
+        if(buf[i] == 'R'){
+            break;
+        }
+    }
+    buf[i] = '\0';
+    
+    if(buf[0] != '\033' || buf[1] != '['){
+        return -1;
+    }
+    if(sscanf(&buf[2], "%d;%d", row, col) != 2){
+        return -1;
+    }
+
+    return 0;
+}
+
+static bool handle_arrow_key(arrowKey key){ //can't move down to next row when at the end of line
+    int row, col;
+    cursor_col_position(&row, &col);
     switch (key){
         case ARROW_LEFT:
             if(cpos > prompt_size){
-                CURSOR_BACKWARD(1);
+                if(col > 1){
+                    CURSOR_BACKWARD(1);
+                } else{
+                    CURSOR_TO_POS(row-1, cols_size);
+                }
                 --cpos;
                 return true;
             }
             break;
         case ARROW_RIGHT:
             if(cpos < prompt_size + input_size){
-                CURSOR_FORWARD(1);
+                if(col < cols_size){
+                    CURSOR_FORWARD(1);
+                } else{
+                    CURSOR_TO_POS(row+1, 0);
+                }
                 ++cpos;
                 return true;
             }
@@ -115,7 +162,8 @@ int fetch_line(char *str_ptr){  //currently responsible both fetching text AND h
         }
         switch (c){
             case CTRL_KEY('d'):
-                quit();
+                putchar('\n');
+                quit(0);
                 break;
             case ESCAPE:
                 {
@@ -142,15 +190,17 @@ int fetch_line(char *str_ptr){  //currently responsible both fetching text AND h
                 break;
             default:
                 if(!iscntrl(c)){
+                    putchar(c);
                     if(input_size < MAXBUF-1){
                         int rel_pos = cpos-prompt_size;
-                        memmove(&str_ptr[rel_pos+1], &str_ptr[rel_pos], MAX(input_size-rel_pos, 0));    //size +1?
+                        if(rel_pos < input_size){
+                            memmove(&str_ptr[rel_pos+1], &str_ptr[rel_pos], MAX(input_size-rel_pos, 0));    //size +1?
+                            str_ptr[input_size+1] = '\0';
+                            printf(CLEAR_AFTER_CURSOR SAVE_CURSOR "%s" RESTORE_CURSOR, &str_ptr[rel_pos+1]);
+                        }
                         str_ptr[rel_pos] = (char) c;
-                        str_ptr[input_size+1] = '\0';
-                        printf(CLEAR_AFTER_CURSOR SAVE_CURSOR "%s" RESTORE_CURSOR, &str_ptr[rel_pos]);
                         ++input_size;
                     }
-                    putchar(c);
                     ++cpos;
                 } else{
                     printf("received character %d\n", c);

@@ -15,12 +15,6 @@
 
 #define DEF_PERM 0644
 
-void restart(){
-    restore();
-    char *argv[2] = {"shell", NULL};
-    execvp(argv[0], argv);
-}
-
 void cd(int argc, char **argv){
     char dest[MAXBUF];
     static char prev_dir[MAXBUF] = "";
@@ -85,18 +79,15 @@ bool check_builtins(int argc, char **argv){
         help();
         return true;
     } else if(strcmp(progname, "exit") == 0){
-        quit();
+        quit(0);
     } else if(strcmp(progname, "export") == 0){
         set_env_var(argc, argv);
-        return true;
-    }else if(strcmp(progname, "restart") == 0){
-        restart();
         return true;
     }
     return false;
 }
 
-void run_program(int argc, char **argv, bool foreground, int input_fd, int output_fd){
+void run_program(int argc, char **argv, bool foreground, int input_fd, int output_fd, bool doing_pipe){
     if(check_builtins(argc, argv)){
         return;
     }
@@ -112,17 +103,19 @@ void run_program(int argc, char **argv, bool foreground, int input_fd, int outpu
     }
     if(pid < 0){
         PRINT_ERROR;
+        init_terminal();
         return;
     }
     if(foreground){
         int wstatus;
         waitpid(pid, &wstatus, 0);
-    } else{
+    } else if(!doing_pipe){
         printf("Background process started with pid: %d\n", pid);
     }
     init_terminal();
 }
 
+/* Should be changed to evaluate the whole input before starting programs to make pipes work properly */
 void parse_line(char *input){
     waitpid(-1, NULL, WNOHANG);
     char *tokens[MAXARGS];
@@ -180,7 +173,7 @@ void parse_line(char *input){
                 output_fd = pipe_fd[1];
                 doing_pipe = true;
             case AMPERSAND:
-                foreground = 0;
+                foreground = false;
             case NULLBYTE:
             case SEMICOLON:
                 if(argc == 0){
@@ -189,13 +182,16 @@ void parse_line(char *input){
                 if(strcmp(tokens[0], "ls") == 0){
                     tokens[argc++] = "--color=auto";
                 }   
+                if(doing_pipe){
+                    foreground = true;
+                }
                 tokens[argc] = NULL;
                 fflush(stdout);
-                run_program(argc, tokens, foreground, input_fd, output_fd);
+                run_program(argc, tokens, foreground, input_fd, output_fd, doing_pipe);
                 argc = 0;
                 wordfree(&exp);
                 exp.we_wordc = 0;
-                foreground = 1;
+                foreground = true;
                 if(input_fd != STDIN_FILENO){
                     close(input_fd);
                     input_fd = STDIN_FILENO;
@@ -206,6 +202,7 @@ void parse_line(char *input){
                 }
                 if(doing_pipe){
                     input_fd = pipe_fd[0];
+                    //foreground = false;
                     doing_pipe = false;
                 }
                 if(type == NULLBYTE){

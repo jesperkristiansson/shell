@@ -1,4 +1,3 @@
 
 
-void restore();
-void quit();
+void quit(int code);
