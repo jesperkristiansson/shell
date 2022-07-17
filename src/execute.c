@@ -3,6 +3,7 @@
 #include "tokens.h"
 #include "error.h"
 #include "quit.h"
+#include "io.h"
 #include <wordexp.h>
 #include <stdbool.h>
 #include <unistd.h>
@@ -15,6 +16,7 @@
 #define DEF_PERM 0644
 
 void restart(){
+    restore();
     char *argv[2] = {"shell", NULL};
     execvp(argv[0], argv);
 }
@@ -98,6 +100,7 @@ void run_program(int argc, char **argv, bool foreground, int input_fd, int outpu
     if(check_builtins(argc, argv)){
         return;
     }
+    restore_terminal();
     pid_t pid = fork();
     if(pid == 0){
         dup2(input_fd, STDIN_FILENO);
@@ -117,6 +120,7 @@ void run_program(int argc, char **argv, bool foreground, int input_fd, int outpu
     } else{
         printf("Background process started with pid: %d\n", pid);
     }
+    init_terminal();
 }
 
 void parse_line(char *input){
@@ -177,7 +181,7 @@ void parse_line(char *input){
                 doing_pipe = true;
             case AMPERSAND:
                 foreground = 0;
-            case NEWLINE:
+            case NULLBYTE:
             case SEMICOLON:
                 if(argc == 0){
                     return;
@@ -204,7 +208,7 @@ void parse_line(char *input){
                     input_fd = pipe_fd[0];
                     doing_pipe = false;
                 }
-                if(type == NEWLINE){
+                if(type == NULLBYTE){
                     return;
                 }
                 break;

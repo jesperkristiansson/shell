@@ -110,6 +110,9 @@ int fetch_line(char *str_ptr){  //currently responsible both fetching text AND h
             putchar('\n');
             return EOF;
         }
+        if(c == '\n'){
+            break;
+        }
         switch (c){
             case CTRL_KEY('d'):
                 quit();
@@ -138,28 +141,24 @@ int fetch_line(char *str_ptr){  //currently responsible both fetching text AND h
                 }
                 break;
             default:
-                if(!iscntrl(c) || c == '\n'){
+                if(!iscntrl(c)){
                     if(input_size < MAXBUF-1){
-                        if(c == '\n'){
-                            str_ptr[input_size] = '\n';
-                        } else{
-                            int rel_pos = cpos-prompt_size;
-                            memmove(&str_ptr[rel_pos+1], &str_ptr[rel_pos], MAX(input_size-rel_pos, 0));    //size +1?
-                            str_ptr[rel_pos] = (char) c;
-                            str_ptr[input_size+1] = '\0';
-                            printf(CLEAR_AFTER_CURSOR SAVE_CURSOR "%s" RESTORE_CURSOR, &str_ptr[rel_pos]);
-                        }
+                        int rel_pos = cpos-prompt_size;
+                        memmove(&str_ptr[rel_pos+1], &str_ptr[rel_pos], MAX(input_size-rel_pos, 0));    //size +1?
+                        str_ptr[rel_pos] = (char) c;
+                        str_ptr[input_size+1] = '\0';
+                        printf(CLEAR_AFTER_CURSOR SAVE_CURSOR "%s" RESTORE_CURSOR, &str_ptr[rel_pos]);
                         ++input_size;
                     }
                     putchar(c);
                     ++cpos;
+                } else{
+                    printf("received character %d\n", c);
                 }
                 break;
         }
-        if(c == '\n'){
-            break;
-        }
     }
+    putchar('\n');
     if(input_size >= MAXBUF-1){
         print_error("Too many tokens\n");
         return fetch_line(str_ptr);

@@ -6,7 +6,6 @@ bool end_of_token(char c){
     switch (c){
         case '\0':
         case ' ':
-        case '\n':
         case '\t':
         case ';':
         case '>':
@@ -29,28 +28,27 @@ token_t get_token(char *str, char **token_ptr){
     *token_ptr = &token_buf[token_pos];
     switch (str[str_pos]){
         case ';':
-            token_buf[token_pos++] = str[str_pos++];
+            ++str_pos;
             type = SEMICOLON;
             break;
         case '>': 
-            token_buf[token_pos++] = str[str_pos++];
+            ++str_pos;
             type = OUTPUT;
             break;
         case '<':
-            token_buf[token_pos++] = str[str_pos++];
+            ++str_pos;
             type = INPUT;
             break;
         case '|':
-            token_buf[token_pos++] = str[str_pos++];
+            ++str_pos;
             type = PIPE;
             break;
-        case '\n':
-            token_buf[token_pos++] = str[str_pos++];
-            type = NEWLINE;
-            break;
         case '&':
-            token_buf[token_pos++] = str[str_pos++];
+            ++str_pos;
             type = AMPERSAND;
+            break;
+        case '\0':
+            type = NULLBYTE;
             break;
         case '\"':
             type = RAW;

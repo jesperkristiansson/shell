@@ -1,3 +1,4 @@
 
 
+void restore();
 void quit();

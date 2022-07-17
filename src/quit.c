@@ -1,7 +1,11 @@
 #include "io.h"
 #include <stdlib.h>
 
-void quit(){
+void restore(){
     restore_terminal();
+}
+
+void quit(){
+    restore();
     exit(0);
 }

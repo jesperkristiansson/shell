@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 
+void restart();
 void cd(int argc, char **argv);
 void help();
 void set_env_var(int argc, char **argv);

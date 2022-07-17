@@ -7,7 +7,7 @@ typedef enum{
     INPUT,
     OUTPUT,
     PIPE,
-    NEWLINE,
+    NULLBYTE,
     SEMICOLON,
     AMPERSAND,
     NORMAL,
