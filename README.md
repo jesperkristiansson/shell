@@ -8,6 +8,7 @@ This project is being developed for, and has only been tested on Ubuntu 20.04, o
 ## Current functionality
 - Run programs with `programname [argumentlist]`
   - Use raw text by surrounding it with `"`, e.g. `programname "string1 string2"`
+- Word expansion, e.g. wildcards (*), and variables are expanded
 - Input/output-redirection
   - Redirect stdin from file with `program < file`
   - Redirect stdout to file with `program > file`
@@ -18,5 +19,14 @@ This project is being developed for, and has only been tested on Ubuntu 20.04, o
 - Move cursor using left and right arrow keys
   - Insertion and deletion(currently only works with backspace, support for the delete-button is coming) works wherever the cursor is located
 - Traverse directories using `cd directory`
-- Exit the shell by running `exit` or press ctrl+D
+- Exit the shell by running `exit` or press CTRL+D
 - Set environment variables with `export $name=value`
+
+## Coming features
+- Autocompletion of input by pressing TAB
+- Delete whole words using CTRL+W
+- Move cursor between words with CTRL+ARROWKEY
+- Command history which can be accessed with up and down arrow keys
+- Run piped programs in the background
+- Implement a help-command
+- Add a config-file which is used to customize the shell
