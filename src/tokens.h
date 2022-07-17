@@ -4,14 +4,14 @@
 #include <stdbool.h>
 
 typedef enum{
-    INPUT,
-    OUTPUT,
-    PIPE,
-    NULLBYTE,
-    SEMICOLON,
-    AMPERSAND,
-    NORMAL,
-    RAW
+    INPUT = '<',
+    OUTPUT = '>',
+    PIPE = '|',
+    NULLBYTE = '\0',
+    SEMICOLON = ';',
+    AMPERSAND = '&',
+    RAW = '\"',
+    NORMAL
 } token_t;
 
 bool end_of_token(char c);

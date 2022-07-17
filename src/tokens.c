@@ -27,30 +27,15 @@ token_t get_token(char *str, char **token_ptr){
     }
     *token_ptr = &token_buf[token_pos];
     switch (str[str_pos]){
-        case ';':
-            ++str_pos;
-            type = SEMICOLON;
+        case SEMICOLON:
+        case OUTPUT: 
+        case INPUT:
+        case PIPE:
+        case AMPERSAND:
+        case NULLBYTE:
+            type = str[str_pos++];
             break;
-        case '>': 
-            ++str_pos;
-            type = OUTPUT;
-            break;
-        case '<':
-            ++str_pos;
-            type = INPUT;
-            break;
-        case '|':
-            ++str_pos;
-            type = PIPE;
-            break;
-        case '&':
-            ++str_pos;
-            type = AMPERSAND;
-            break;
-        case '\0':
-            type = NULLBYTE;
-            break;
-        case '\"':
+        case RAW:
             type = RAW;
             while(str[++str_pos] != '\"'){
                 if(str_pos >= MAXBUF){
