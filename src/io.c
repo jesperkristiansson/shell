@@ -146,6 +146,24 @@ static bool handle_arrow_key(arrowKey key){ //can't move down to next row when a
     return false;
 }
 
+static bool delete_next_char(char *str_ptr){
+    if(INPUT_POS >= input_size){
+        return false;
+    }
+    memmove(&str_ptr[INPUT_POS], &str_ptr[INPUT_POS+1], input_size-INPUT_POS);
+    --input_size;
+    str_ptr[input_size] = '\0';
+    printf(CLEAR_AFTER_CURSOR SAVE_CURSOR "%s" RESTORE_CURSOR, &str_ptr[INPUT_POS]);
+    return true;
+}
+
+static bool delete_char(char *str_ptr){
+    if(handle_arrow_key(ARROW_LEFT)){
+        return delete_next_char(str_ptr);
+    }
+    return false;
+}
+
 static void handle_escape_sequence(char *str_ptr){
     char buf[5];
     buf[0] = getchar(); 
@@ -164,38 +182,31 @@ static void handle_escape_sequence(char *str_ptr){
                 buf[4] = getchar();
                 if(buf[2] == ';' && buf[3] == '5'){
                     if(buf[4] == ARROW_LEFT){
-                        while(handle_arrow_key(buf[4]) && str_ptr[cpos-prompt_size-1] != ' ');
+                        while(handle_arrow_key(buf[4]) && str_ptr[INPUT_POS-1] != ' ');
                     } else if(buf[4] == ARROW_RIGHT){
-                        while(handle_arrow_key(buf[4]) && str_ptr[cpos-prompt_size] != ' ');
+                        while(handle_arrow_key(buf[4]) && str_ptr[INPUT_POS] != ' ');
                     }
+                }
+                break;
+            case '3':
+                buf[2] = getchar();
+                if(buf[2] == '~'){
+                    delete_next_char(str_ptr);
                 }
                 break;
         }
     }
 }
 
-static bool delete_chars(char * str_ptr){
-    if(handle_arrow_key(ARROW_LEFT)){
-        int rel_pos = cpos-prompt_size;
-        memmove(&str_ptr[rel_pos], &str_ptr[rel_pos+1], input_size-rel_pos);
-        --input_size;
-        str_ptr[input_size] = '\0';
-        printf(CLEAR_AFTER_CURSOR SAVE_CURSOR "%s" RESTORE_CURSOR, &str_ptr[rel_pos]);
-        return true;
-    }
-    return false;
-}
-
 void handle_normal_char(char *str_ptr, char c){
     putchar(c);
     if(input_size < MAXBUF-1){
-        int rel_pos = cpos-prompt_size;
-        if(rel_pos < input_size){
-            memmove(&str_ptr[rel_pos+1], &str_ptr[rel_pos], MAX(input_size-rel_pos, 0));    //size +1?
+        if(INPUT_POS < input_size){
+            memmove(&str_ptr[INPUT_POS+1], &str_ptr[INPUT_POS], MAX(input_size-INPUT_POS, 0));    //size +1?
             str_ptr[input_size+1] = '\0';
-            printf(CLEAR_AFTER_CURSOR SAVE_CURSOR "%s" RESTORE_CURSOR, &str_ptr[rel_pos+1]);
+            printf(CLEAR_AFTER_CURSOR SAVE_CURSOR "%s" RESTORE_CURSOR, &str_ptr[INPUT_POS+1]);
         }
-        str_ptr[rel_pos] = (char) c;
+        str_ptr[INPUT_POS] = (char) c;
         ++input_size;
     }
     ++cpos;
@@ -216,8 +227,12 @@ int fetch_line(char *str_ptr){  //currently responsible both fetching text AND h
         }
         switch (c){
             case CTRL_KEY('d'):
-                putchar('\n');
-                quit(0);
+                if(input_size == 0){
+                    putchar('\n');
+                    return EOF;
+                } else{
+                    delete_next_char(str_ptr);
+                }
                 break;
             case CTRL_KEY('c'): //remove current input
                 while(handle_arrow_key(ARROW_LEFT));
@@ -225,14 +240,22 @@ int fetch_line(char *str_ptr){  //currently responsible both fetching text AND h
                 str_ptr[0] = '\0';
                 input_size = 0;
                 break;
+            case CTRL_KEY('k'):
+                printf(CLEAR_AFTER_CURSOR);
+                str_ptr[INPUT_POS] = '\0';
+                input_size = INPUT_POS;
+                break;
             case CTRL_KEY('w'): //remove one word of input
-                while(delete_chars(str_ptr) && INPUT_POS > 0 && str_ptr[INPUT_POS-1] != ' ');
+                while(delete_char(str_ptr) && INPUT_POS > 0 && str_ptr[INPUT_POS-1] != ' ');
+                break;
+            case CTRL_KEY('u'):
+                while(delete_char(str_ptr));
                 break;
             case ESCAPE:
                 handle_escape_sequence(str_ptr);
                 break;
             case BACKSPACE:
-                delete_chars(str_ptr);
+                delete_char(str_ptr);
                 break;
             default:
                 if(!iscntrl(c)){
