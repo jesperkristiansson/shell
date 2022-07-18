@@ -25,10 +25,10 @@
 #define BACKSPACE (0x7f)
 
 typedef enum{
-    ARROW_LEFT,
-    ARROW_RIGHT,
-    ARROW_UP,
-    ARROW_DOWN,
+    ARROW_LEFT = 'D',
+    ARROW_RIGHT = 'C',
+    ARROW_UP = 'A',
+    ARROW_DOWN = 'B',
 } arrowKey;
 
 static int cpos = 0;
@@ -145,6 +145,34 @@ static bool handle_arrow_key(arrowKey key){ //can't move down to next row when a
     return false;
 }
 
+static void handle_escape_sequence(char *str_ptr){
+    char buf[5];
+    buf[0] = getchar(); 
+    if(buf[0] == '['){
+        buf[1] = getchar();
+        switch(buf[1]){
+            case ARROW_UP:
+            case ARROW_DOWN:
+            case ARROW_RIGHT:
+            case ARROW_LEFT:
+                handle_arrow_key(buf[1]);
+                break;
+            case '1':
+                buf[2] = getchar();
+                buf[3] = getchar();
+                buf[4] = getchar();
+                if(buf[2] == ';' && buf[3] == '5'){
+                    if(buf[4] == ARROW_LEFT){
+                        while(handle_arrow_key(buf[4]) && str_ptr[cpos-prompt_size-1] != ' ');
+                    } else if(buf[4] == ARROW_RIGHT){
+                        while(handle_arrow_key(buf[4]) && str_ptr[cpos-prompt_size] != ' ');
+                    }
+                }
+                break;
+        }
+    }
+}
+
 int fetch_line(char *str_ptr){  //currently responsible both fetching text AND handling special characters (CTRL+D etc.)
     int c;
     print_prompt();
@@ -166,18 +194,7 @@ int fetch_line(char *str_ptr){  //currently responsible both fetching text AND h
                 quit(0);
                 break;
             case ESCAPE:
-                {
-                    char buf[3];
-                    buf[0] = getchar();
-                    if(buf[0] == '['){
-                        buf[1] = getchar();
-                        if(buf[1] == 'D'){
-                            handle_arrow_key(ARROW_LEFT);
-                        } else if(buf[1] == 'C'){
-                            handle_arrow_key(ARROW_RIGHT);
-                        }
-                    }
-                }
+                handle_escape_sequence(str_ptr);
                 break;
             case BACKSPACE:
                 if(handle_arrow_key(ARROW_LEFT)){

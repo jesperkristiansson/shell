@@ -17,6 +17,7 @@ This project is being developed for, and has only been tested on Ubuntu 20.04, o
 - Run programs as background processes using `program &`
 - Run multiple programs with one line of input by seperating them with `;`, e.g. `program; program`
 - Move cursor using left and right arrow keys
+  - Used CTRL+ARROWKEY to move the cursor whole words at a time
   - Insertion and deletion(currently only works with backspace, support for the delete-button is coming) works wherever the cursor is located
 - Traverse directories using `cd directory`
 - Exit the shell by running `exit` or press CTRL+D
@@ -25,8 +26,8 @@ This project is being developed for, and has only been tested on Ubuntu 20.04, o
 ## Coming features
 - Autocompletion of input by pressing TAB
 - Delete whole words using CTRL+W
-- Move cursor between words with CTRL+ARROWKEY
 - Command history which can be accessed with up and down arrow keys
 - Run piped programs in the background
 - Implement a help-command
 - Add a config-file which is used to customize the shell
+- Make CTRL+C delete the current input
