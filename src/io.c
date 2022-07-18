@@ -13,6 +13,7 @@
 #define DEF_PROMPT "> "
 
 #define MAX(x, y) ((x) > (y) ? (x) : (y))
+#define INPUT_POS (cpos - prompt_size)
 #define CURSOR_FORWARD(x) printf("\033[%dC", (x))
 #define CURSOR_BACKWARD(x) printf("\033[%dD", (x))
 #define CURSOR_TO_POS(x, y) printf("\033[%d;%dH", (x), (y))
@@ -173,14 +174,16 @@ static void handle_escape_sequence(char *str_ptr){
     }
 }
 
-static void handle_backspace(char * str_ptr){
+static bool handle_backspace(char * str_ptr){
     if(handle_arrow_key(ARROW_LEFT)){
         int rel_pos = cpos-prompt_size;
         memmove(&str_ptr[rel_pos], &str_ptr[rel_pos+1], input_size-rel_pos);
         --input_size;
         str_ptr[input_size] = '\0';
         printf(CLEAR_AFTER_CURSOR SAVE_CURSOR "%s" RESTORE_CURSOR, &str_ptr[rel_pos]);
+        return true;
     }
+    return false;
 }
 
 void handle_normal_char(char *str_ptr, char c){
@@ -217,6 +220,12 @@ int fetch_line(char *str_ptr){  //currently responsible both fetching text AND h
             case CTRL_KEY('d'):
                 putchar('\n');
                 quit(0);
+                break;
+            case CTRL_KEY('c'): //remove current input
+
+                break;
+            case CTRL_KEY('w'): //remove one word of input
+                while(handle_backspace(str_ptr) && INPUT_POS > 0 && str_ptr[INPUT_POS-1] != ' ');
                 break;
             case ESCAPE:
                 handle_escape_sequence(str_ptr);
