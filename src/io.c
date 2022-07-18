@@ -173,6 +173,31 @@ static void handle_escape_sequence(char *str_ptr){
     }
 }
 
+static void handle_backspace(char * str_ptr){
+    if(handle_arrow_key(ARROW_LEFT)){
+        int rel_pos = cpos-prompt_size;
+        memmove(&str_ptr[rel_pos], &str_ptr[rel_pos+1], input_size-rel_pos);
+        --input_size;
+        str_ptr[input_size] = '\0';
+        printf(CLEAR_AFTER_CURSOR SAVE_CURSOR "%s" RESTORE_CURSOR, &str_ptr[rel_pos]);
+    }
+}
+
+void handle_normal_char(char *str_ptr, char c){
+    putchar(c);
+    if(input_size < MAXBUF-1){
+        int rel_pos = cpos-prompt_size;
+        if(rel_pos < input_size){
+            memmove(&str_ptr[rel_pos+1], &str_ptr[rel_pos], MAX(input_size-rel_pos, 0));    //size +1?
+            str_ptr[input_size+1] = '\0';
+            printf(CLEAR_AFTER_CURSOR SAVE_CURSOR "%s" RESTORE_CURSOR, &str_ptr[rel_pos+1]);
+        }
+        str_ptr[rel_pos] = (char) c;
+        ++input_size;
+    }
+    ++cpos;
+}
+
 int fetch_line(char *str_ptr){  //currently responsible both fetching text AND handling special characters (CTRL+D etc.)
     int c;
     print_prompt();
@@ -197,28 +222,11 @@ int fetch_line(char *str_ptr){  //currently responsible both fetching text AND h
                 handle_escape_sequence(str_ptr);
                 break;
             case BACKSPACE:
-                if(handle_arrow_key(ARROW_LEFT)){
-                    int rel_pos = cpos-prompt_size;
-                    memmove(&str_ptr[rel_pos], &str_ptr[rel_pos+1], input_size-rel_pos);
-                    --input_size;
-                    str_ptr[input_size] = '\0';
-                    printf(CLEAR_AFTER_CURSOR SAVE_CURSOR "%s" RESTORE_CURSOR, &str_ptr[rel_pos]);
-                }
+                handle_backspace(str_ptr);
                 break;
             default:
                 if(!iscntrl(c)){
-                    putchar(c);
-                    if(input_size < MAXBUF-1){
-                        int rel_pos = cpos-prompt_size;
-                        if(rel_pos < input_size){
-                            memmove(&str_ptr[rel_pos+1], &str_ptr[rel_pos], MAX(input_size-rel_pos, 0));    //size +1?
-                            str_ptr[input_size+1] = '\0';
-                            printf(CLEAR_AFTER_CURSOR SAVE_CURSOR "%s" RESTORE_CURSOR, &str_ptr[rel_pos+1]);
-                        }
-                        str_ptr[rel_pos] = (char) c;
-                        ++input_size;
-                    }
-                    ++cpos;
+                    handle_normal_char(str_ptr, c);
                 } else{
                     printf("received character %d\n", c);
                 }
