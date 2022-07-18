@@ -14,6 +14,8 @@ int main(){
 
     char input[MAXBUF];
     while(fetch_line(input) != EOF){
+        str_pos = 0;
+        token_pos = 0;
         parse_line(input);
     }
     quit(0);

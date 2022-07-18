@@ -174,7 +174,7 @@ static void handle_escape_sequence(char *str_ptr){
     }
 }
 
-static bool handle_backspace(char * str_ptr){
+static bool delete_chars(char * str_ptr){
     if(handle_arrow_key(ARROW_LEFT)){
         int rel_pos = cpos-prompt_size;
         memmove(&str_ptr[rel_pos], &str_ptr[rel_pos+1], input_size-rel_pos);
@@ -206,8 +206,6 @@ int fetch_line(char *str_ptr){  //currently responsible both fetching text AND h
     print_prompt();
     cpos = prompt_size;
     input_size = 0;
-    str_pos = 0;
-    token_pos = 0;
     while((c = getchar())){
         if(c == EOF){
             putchar('\n');
@@ -222,16 +220,19 @@ int fetch_line(char *str_ptr){  //currently responsible both fetching text AND h
                 quit(0);
                 break;
             case CTRL_KEY('c'): //remove current input
-
+                while(handle_arrow_key(ARROW_LEFT));
+                printf(CLEAR_AFTER_CURSOR);
+                str_ptr[0] = '\0';
+                input_size = 0;
                 break;
             case CTRL_KEY('w'): //remove one word of input
-                while(handle_backspace(str_ptr) && INPUT_POS > 0 && str_ptr[INPUT_POS-1] != ' ');
+                while(delete_chars(str_ptr) && INPUT_POS > 0 && str_ptr[INPUT_POS-1] != ' ');
                 break;
             case ESCAPE:
                 handle_escape_sequence(str_ptr);
                 break;
             case BACKSPACE:
-                handle_backspace(str_ptr);
+                delete_chars(str_ptr);
                 break;
             default:
                 if(!iscntrl(c)){

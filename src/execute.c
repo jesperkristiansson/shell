@@ -117,6 +117,8 @@ void run_program(int argc, char **argv, bool foreground, int input_fd, int outpu
 
 /* Should be changed to evaluate the whole input before starting programs to make pipes work properly */
 void parse_line(char *input){
+    str_pos = 0;
+    token_pos = 0;
     waitpid(-1, NULL, WNOHANG);
     char *tokens[MAXARGS];
     token_t type;
