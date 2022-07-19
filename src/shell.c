@@ -2,11 +2,13 @@
 #include "globals.h"
 #include "execute.h"
 #include "quit.h"
+#include "command_history.h"
 #include <stdio.h>
 
 void init(){
     init_terminal();
     get_terminal_size();
+    ch_init();
 }
 
 int main(){

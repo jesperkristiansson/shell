@@ -1,6 +1,7 @@
 #include "quit.h"
 #include "globals.h"
 #include "error.h"
+#include "command_history.h"
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -32,6 +33,7 @@ typedef enum{
     ARROW_DOWN = 'B',
 } arrowKey;
 
+static char *input;
 static int cpos = 0;
 static int prompt_size = 0;
 static int input_size = 0;
@@ -113,9 +115,12 @@ static int cursor_col_position(int *row, int *col){
     return 0;
 }
 
+static void remove_input();
+
 static bool handle_arrow_key(arrowKey key){ //can't move down to next row when at the end of line
     int row, col;
     cursor_col_position(&row, &col);
+    char *cmd;
     switch (key){
         case ARROW_LEFT:
             if(cpos > prompt_size){
@@ -140,31 +145,51 @@ static bool handle_arrow_key(arrowKey key){ //can't move down to next row when a
             }
             break;
         case ARROW_DOWN:
+            remove_input();
+            cmd = next_command();
+            strncpy(input, cmd, MAXBUF);
+            printf("%s", input);
+            input_size = strlen(input);
+            cpos += input_size;
+            break;
         case ARROW_UP:
+            remove_input();
+            cmd = previous_command();
+            strncpy(input, cmd, MAXBUF);
+            printf("%s", input);
+            input_size = strlen(input);
+            cpos += input_size;
             break;
     }
     return false;
 }
 
-static bool delete_next_char(char *str_ptr){
+static bool delete_next_char(){
     if(INPUT_POS >= input_size){
         return false;
     }
-    memmove(&str_ptr[INPUT_POS], &str_ptr[INPUT_POS+1], input_size-INPUT_POS);
+    memmove(&input[INPUT_POS], &input[INPUT_POS+1], input_size-INPUT_POS);
     --input_size;
-    str_ptr[input_size] = '\0';
-    printf(CLEAR_AFTER_CURSOR SAVE_CURSOR "%s" RESTORE_CURSOR, &str_ptr[INPUT_POS]);
+    input[input_size] = '\0';
+    printf(CLEAR_AFTER_CURSOR SAVE_CURSOR "%s" RESTORE_CURSOR, &input[INPUT_POS]);
     return true;
 }
 
-static bool delete_char(char *str_ptr){
+static bool delete_char(){
     if(handle_arrow_key(ARROW_LEFT)){
-        return delete_next_char(str_ptr);
+        return delete_next_char(input);
     }
     return false;
 }
 
-static void handle_escape_sequence(char *str_ptr){
+static void remove_input(){
+    while(handle_arrow_key(ARROW_LEFT));
+    printf(CLEAR_AFTER_CURSOR);
+    input[0] = '\0';
+    input_size = 0;
+}
+
+static void handle_escape_sequence(){
     char buf[5];
     buf[0] = getchar(); 
     if(buf[0] == '['){
@@ -182,37 +207,38 @@ static void handle_escape_sequence(char *str_ptr){
                 buf[4] = getchar();
                 if(buf[2] == ';' && buf[3] == '5'){
                     if(buf[4] == ARROW_LEFT){
-                        while(handle_arrow_key(buf[4]) && str_ptr[INPUT_POS-1] != ' ');
+                        while(handle_arrow_key(buf[4]) && input[INPUT_POS-1] != ' ');
                     } else if(buf[4] == ARROW_RIGHT){
-                        while(handle_arrow_key(buf[4]) && str_ptr[INPUT_POS] != ' ');
+                        while(handle_arrow_key(buf[4]) && input[INPUT_POS] != ' ');
                     }
                 }
                 break;
             case '3':
                 buf[2] = getchar();
                 if(buf[2] == '~'){
-                    delete_next_char(str_ptr);
+                    delete_next_char(input);
                 }
                 break;
         }
     }
 }
 
-void handle_normal_char(char *str_ptr, char c){
+void handle_normal_char(char c){
     putchar(c);
     if(input_size < MAXBUF-1){
         if(INPUT_POS < input_size){
-            memmove(&str_ptr[INPUT_POS+1], &str_ptr[INPUT_POS], MAX(input_size-INPUT_POS, 0));    //size +1?
-            str_ptr[input_size+1] = '\0';
-            printf(CLEAR_AFTER_CURSOR SAVE_CURSOR "%s" RESTORE_CURSOR, &str_ptr[INPUT_POS+1]);
+            memmove(&input[INPUT_POS+1], &input[INPUT_POS], MAX(input_size-INPUT_POS, 0));    //size +1?
+            input[input_size+1] = '\0';
+            printf(CLEAR_AFTER_CURSOR SAVE_CURSOR "%s" RESTORE_CURSOR, &input[INPUT_POS+1]);
         }
-        str_ptr[INPUT_POS] = (char) c;
+        input[INPUT_POS] = (char) c;
         ++input_size;
     }
     ++cpos;
 }
 
-int fetch_line(char *str_ptr){  //currently responsible both fetching text AND handling special characters (CTRL+D etc.)
+int fetch_line(char *str){  //currently responsible both fetching text AND handling special characters (CTRL+D etc.)
+    input = str;
     int c;
     print_prompt();
     cpos = prompt_size;
@@ -231,35 +257,32 @@ int fetch_line(char *str_ptr){  //currently responsible both fetching text AND h
                     putchar('\n');
                     return EOF;
                 } else{
-                    delete_next_char(str_ptr);
+                    delete_next_char();
                 }
                 break;
             case CTRL_KEY('c'): //remove current input
-                while(handle_arrow_key(ARROW_LEFT));
-                printf(CLEAR_AFTER_CURSOR);
-                str_ptr[0] = '\0';
-                input_size = 0;
+                remove_input();
                 break;
             case CTRL_KEY('k'):
                 printf(CLEAR_AFTER_CURSOR);
-                str_ptr[INPUT_POS] = '\0';
+                input[INPUT_POS] = '\0';
                 input_size = INPUT_POS;
                 break;
             case CTRL_KEY('w'): //remove one word of input
-                while(delete_char(str_ptr) && INPUT_POS > 0 && str_ptr[INPUT_POS-1] != ' ');
+                while(delete_char() && INPUT_POS > 0 && input[INPUT_POS-1] != ' ');
                 break;
             case CTRL_KEY('u'):
-                while(delete_char(str_ptr));
+                while(delete_char());
                 break;
             case ESCAPE:
-                handle_escape_sequence(str_ptr);
+                handle_escape_sequence();
                 break;
             case BACKSPACE:
-                delete_char(str_ptr);
+                delete_char();
                 break;
             default:
                 if(!iscntrl(c)){
-                    handle_normal_char(str_ptr, c);
+                    handle_normal_char(c);
                 } else{
                     printf("received character %d\n", c);
                 }
@@ -269,8 +292,9 @@ int fetch_line(char *str_ptr){  //currently responsible both fetching text AND h
     putchar('\n');
     if(input_size >= MAXBUF-1){
         print_error("Too many tokens\n");
-        return fetch_line(str_ptr);
+        return fetch_line(input);
     }
-    str_ptr[input_size] = '\0';
+    input[input_size] = '\0';
+    add_command(input);
     return input_size;
 }
