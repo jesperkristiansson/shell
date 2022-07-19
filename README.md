@@ -22,14 +22,14 @@ This project is being developed for, and has only been tested on Ubuntu 20.04, o
 - Delete whole words using CTRL+W
 - CTRL+C erases the current input
 - CTRL+U and CTRL+K erases all input before or after the cursor, respectively
+- Pressing arrow key up or down cycles through command history
 - Traverse directories using `cd directory`
 - Exit the shell by running `exit` or press CTRL+D
 - Set environment variables with `export $name=value`
 
 ## Coming features
 - Autocompletion of input by pressing TAB
-- Command history which can be accessed with up and down arrow keys
 - Run piped programs in the background
 - Implement a help-command
 - Add a config-file which is used to customize the shell
-
+- Add a history-command which prints the current command history
