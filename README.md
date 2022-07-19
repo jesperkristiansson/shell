@@ -23,6 +23,7 @@ This project is being developed for, and has only been tested on Ubuntu 20.04, o
 - CTRL+C erases the current input
 - CTRL+U and CTRL+K erases all input before or after the cursor, respectively
 - Pressing arrow key up or down cycles through command history
+  - Running `history` prints the whole history
 - Traverse directories using `cd directory`
 - Exit the shell by running `exit` or press CTRL+D
 - Set environment variables with `export $name=value`
@@ -32,4 +33,3 @@ This project is being developed for, and has only been tested on Ubuntu 20.04, o
 - Run piped programs in the background
 - Implement a help-command
 - Add a config-file which is used to customize the shell
-- Add a history-command which prints the current command history

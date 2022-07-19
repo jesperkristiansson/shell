@@ -4,6 +4,7 @@
 #include "error.h"
 #include "quit.h"
 #include "io.h"
+#include "command_history.h"
 #include <wordexp.h>
 #include <stdbool.h>
 #include <unistd.h>
@@ -70,6 +71,14 @@ void set_env_var(int argc, char **argv){
     }
 }
 
+void print_history(){
+    char **history;
+    int history_size = get_history(&history);
+    for(int i = 0; i < history_size; ++i){
+        printf("%5d  %s\n", i+1, history[i]);
+    }
+}
+
 bool check_builtins(int argc, char **argv){
     char *progname = argv[0];
     if(strcmp(progname, "cd") == 0){
@@ -82,6 +91,9 @@ bool check_builtins(int argc, char **argv){
         quit(0);
     } else if(strcmp(progname, "export") == 0){
         set_env_var(argc, argv);
+        return true;
+    }else if(strcmp(progname, "history") == 0){
+        print_history();
         return true;
     }
     return false;

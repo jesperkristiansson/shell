@@ -64,7 +64,7 @@ char *next_command(){
     }
 }
 
-void add_command(char *cmd){
+void add_command(char *cmd){    //can likely be optimized by using a circular array instead of moving all elements
     if(history_size < HISTORY_MAX_SIZE){
         strncpy(history[history_size], cmd, MAXBUF);
         history_index = ++history_size;
@@ -85,6 +85,11 @@ void save_command_history(){
         putc('\n', fp);
     }
     fclose(fp);
+}
+
+int get_history(char ***ptr){
+    *ptr = history;
+    return history_size;
 }
 
 void ch_free(){
