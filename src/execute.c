@@ -3,7 +3,6 @@
 #include "tokens.h"
 #include "error.h"
 #include "quit.h"
-#include "io.h"
 #include "command_history.h"
 #include <wordexp.h>
 #include <stdbool.h>
@@ -103,7 +102,6 @@ void run_program(int argc, char **argv, bool foreground, int input_fd, int outpu
     if(check_builtins(argc, argv)){
         return;
     }
-    switch_terminal();
     pid_t pid = fork();
     if(pid == 0){
         dup2(input_fd, STDIN_FILENO);
@@ -115,7 +113,6 @@ void run_program(int argc, char **argv, bool foreground, int input_fd, int outpu
     }
     if(pid < 0){
         PRINT_ERROR;
-        init_terminal();
         return;
     }
     if(foreground){
@@ -124,7 +121,6 @@ void run_program(int argc, char **argv, bool foreground, int input_fd, int outpu
     } else if(!doing_pipe){
         printf("Background process started with pid: %d\n", pid);
     }
-    switch_terminal();
 }
 
 /* Should be changed to evaluate the whole input before starting programs to make pipes work properly */

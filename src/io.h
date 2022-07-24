@@ -3,7 +3,7 @@
 
 #include <stdio.h>
 
-void switch_terminal();
+void reset_terminal();
 void init_terminal();
 void get_terminal_size();
 int fetch_line(char *str_ptr);

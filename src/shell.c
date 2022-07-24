@@ -7,7 +7,6 @@
 #include <unistd.h>
 
 void init(){
-    init_terminal();
     get_terminal_size();
     ch_init();
 }

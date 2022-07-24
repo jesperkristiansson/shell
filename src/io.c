@@ -40,18 +40,14 @@ static int input_size = 0;
 
 static int cols_size = 0;
 
-static struct termios prev_term;
+static struct termios orig_term;
 
-void switch_terminal(){
-    struct termios temp;
-    tcgetattr(STDIN_FILENO, &temp);
-    tcsetattr(STDIN_FILENO, TCSAFLUSH, &prev_term);
-    memcpy(&prev_term, &temp, sizeof(struct termios));
+void reset_terminal(){
+    tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_term);
 }
 
 void init_terminal(){
-    tcgetattr(STDIN_FILENO, &prev_term);
-    //atexit(restore_terminal);
+    tcgetattr(STDIN_FILENO, &orig_term);
 
     struct termios raw;
     tcgetattr(STDIN_FILENO, &raw);
@@ -241,23 +237,23 @@ void handle_normal_char(char c){
 }
 
 int fetch_line(char *str){  //currently responsible both fetching text and handling special characters (CTRL+D etc.)
+    init_terminal();
     input = str;
     int c;
     print_prompt();
     cpos = prompt_size;
     input_size = 0;
-    while((c = getchar())){
+    while((c = getchar()) != '\n'){
         if(c == EOF){
             putchar('\n');
+            reset_terminal();
             return EOF;
-        }
-        if(c == '\n'){
-            break;
         }
         switch (c){
             case CTRL_KEY('d'):
                 if(input_size == 0){
                     putchar('\n');
+                    reset_terminal();
                     return EOF;
                 } else{
                     delete_next_char();
@@ -293,6 +289,7 @@ int fetch_line(char *str){  //currently responsible both fetching text and handl
         }
     }
     putchar('\n');
+    reset_terminal();
     if(input_size >= MAXBUF-1){
         print_error("Too many tokens\n");
         return fetch_line(input);
