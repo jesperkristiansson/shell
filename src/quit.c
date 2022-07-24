@@ -3,7 +3,7 @@
 #include <stdlib.h>
 
 void quit(int code){
-    restore_terminal();
+    switch_terminal();
     save_command_history();
     ch_free();
     exit(code);

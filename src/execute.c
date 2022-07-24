@@ -103,7 +103,7 @@ void run_program(int argc, char **argv, bool foreground, int input_fd, int outpu
     if(check_builtins(argc, argv)){
         return;
     }
-    restore_terminal();
+    switch_terminal();
     pid_t pid = fork();
     if(pid == 0){
         dup2(input_fd, STDIN_FILENO);
@@ -124,7 +124,7 @@ void run_program(int argc, char **argv, bool foreground, int input_fd, int outpu
     } else if(!doing_pipe){
         printf("Background process started with pid: %d\n", pid);
     }
-    init_terminal();
+    switch_terminal();
 }
 
 /* Should be changed to evaluate the whole input before starting programs to make pipes work properly */

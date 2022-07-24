@@ -33,3 +33,4 @@ This project is being developed for, and has only been tested on Ubuntu 20.04, o
 - Run piped programs in the background
 - Implement a help-command
 - Add a config-file which is used to customize the shell
+- Support for scripting
