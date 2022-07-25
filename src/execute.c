@@ -11,7 +11,7 @@
 #include <stdio.h>
 #include <sys/wait.h>
 #include <stdlib.h>
-//#include <sys/types.h>
+#include <string.h>
 
 #define DEF_PERM 0644
 
@@ -107,12 +107,12 @@ void run_program(int argc, char **argv, bool foreground, int input_fd, int outpu
         dup2(input_fd, STDIN_FILENO);
         dup2(output_fd, STDOUT_FILENO);
         if(execvp(argv[0], argv)){
-            PRINT_ERROR;
+            perror(argv[0]);
             exit(-1);
         }
     }
     if(pid < 0){
-        PRINT_ERROR;
+        perror("fork");
         return;
     }
     if(foreground){

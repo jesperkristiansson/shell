@@ -20,7 +20,7 @@ int main(int argc, char **argv){
             parse_line(input);
         }
         quit(0);
-    } else if(argc == 2){   //run the file argv[1] as a script
+    } else if(argc == 2){   //try to run the file argv[1] as a script
         if(access(argv[1], R_OK) == 0){
             FILE *fp = fopen(argv[1], "r");
 
@@ -28,6 +28,9 @@ int main(int argc, char **argv){
                 parse_line(input);
             }
             fclose(fp);
+        } else{
+            perror(argv[1]);
+            return -1;
         }
     } else{
         printf("Too many arguments\n");
