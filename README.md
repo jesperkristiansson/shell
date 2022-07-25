@@ -27,10 +27,11 @@ This project is being developed for, and has only been tested on Ubuntu 20.04, o
 - Traverse directories using `cd directory`
 - Exit the shell by running `exit` or press CTRL+D
 - Set environment variables with `export $name=value`
+- Run a file as a script by running `shell filename`
+  - The syntax is the same as for the interactive shell
 
 ## Coming features
 - Autocompletion of input by pressing TAB
 - Run piped programs in the background
 - Implement a help-command
 - Add a config-file which is used to customize the shell
-- Support for scripting
