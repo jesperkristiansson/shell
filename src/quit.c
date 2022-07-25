@@ -1,3 +1,4 @@
+#include "quit.h"
 #include "command_history.h"
 #include <stdlib.h>
 

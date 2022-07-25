@@ -1,3 +1,4 @@
+#include "io.h"
 #include "quit.h"
 #include "globals.h"
 #include "error.h"
@@ -55,6 +56,7 @@ void init_terminal(){
     raw.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
 
     tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
+    get_terminal_size();
 }
 
 void get_terminal_size(){   //add manual calculation of size when ioctl fails
