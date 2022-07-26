@@ -11,6 +11,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <sys/ioctl.h>
+#include <wordexp.h>
 
 #define DEF_PROMPT "> "
 
@@ -183,6 +184,51 @@ static bool delete_char(){
     return false;
 }
 
+void autocomplete(){
+    int i = INPUT_POS;
+    while(i > 0 && input[i-1] != ' '){    //get index where word starts
+        --i;
+    }
+    size_t word_len = INPUT_POS - i;
+    char word[word_len + 2];       //extra space for a '*' and a '\0'
+    for(size_t j = 0; j < word_len; ++j){
+        word[j] = input[i+j];
+    }
+    word[word_len] = '*';
+    word[word_len+1] = '\0';
+
+    wordexp_t p;
+    wordexp(word, &p, 0);
+
+    if(p.we_wordc == 1){
+        size_t exp_len = strlen(p.we_wordv[0]);
+        
+        if(p.we_wordv[0][exp_len-1] != '*'){    //if the last character is *, the word wasn't expanded to anything, thus do nothing
+            memmove(&input[i+exp_len], &input[INPUT_POS], sizeof(char)*(input_size-INPUT_POS)); //make space for the expansion
+            memcpy(&input[i], p.we_wordv[0], sizeof(char)*exp_len);     //move the expansion into the space
+            input_size += exp_len - word_len;
+            input[input_size] = '\0';
+
+            CURSOR_BACKWARD((int) word_len);
+            printf(CLEAR_AFTER_CURSOR SAVE_CURSOR "%s" RESTORE_CURSOR, &input[i]);
+            CURSOR_FORWARD((int) exp_len);
+            cpos += exp_len - word_len;
+        }
+    } else{
+        printf(SAVE_CURSOR);
+        putchar('\n');
+        size_t i;
+        for(i = 0; i < p.we_wordc-1; ++i){
+            printf("%s  ", p.we_wordv[i]);
+        }
+        printf("%s\n", p.we_wordv[i]);
+        print_prompt();
+        input[input_size] = '\0';       //the input-array isn't necessarily null-terminated
+        printf("%s" RESTORE_CURSOR, input);
+    }
+    wordfree(&p);
+}
+
 static void remove_input(){
     while(handle_arrow_key(ARROW_LEFT));
     printf(CLEAR_AFTER_CURSOR);
@@ -246,12 +292,11 @@ int fetch_line(char *str){  //currently responsible both fetching text and handl
     cpos = prompt_size;
     input_size = 0;
     while((c = getchar()) != '\n'){
-        if(c == EOF){
-            putchar('\n');
-            reset_terminal();
-            return EOF;
-        }
         switch (c){
+            case EOF:
+                putchar('\n');
+                reset_terminal();
+                return EOF;
             case CTRL_KEY('d'):
                 if(input_size == 0){
                     putchar('\n');
@@ -280,6 +325,9 @@ int fetch_line(char *str){  //currently responsible both fetching text and handl
                 break;
             case BACKSPACE:
                 delete_char();
+                break;
+            case '\t':
+                autocomplete();
                 break;
             default:
                 if(!iscntrl(c)){

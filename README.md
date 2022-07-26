@@ -29,9 +29,10 @@ This project is being developed for, and has only been tested on Ubuntu 20.04, o
 - Set environment variables with `export $name=value`
 - Run a file as a script by running `shell filename`
   - The syntax is the same as for the interactive shell
+- Pressing TAB autocompletes your input
 
-## Coming features
-- Autocompletion of input by pressing TAB
+## TODO
+- More sophisticated autocompletion
 - Run piped programs in the background
 - Implement a help-command
 - Add a config-file which is used to customize the shell
