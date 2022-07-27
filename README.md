@@ -30,9 +30,10 @@ This project is being developed for, and has only been tested on Ubuntu 20.04, o
 - Run a file as a script by running `shell filename`
   - The syntax is the same as for the interactive shell
 - Pressing TAB autocompletes your input
+- Create and remove aliases for commands using `alias name=command` and `unalias name`
+- Upon startup, the file .shell_config, located in the users home-directory, is ran as script
 
 ## TODO
 - More sophisticated autocompletion
 - Run piped programs in the background
 - Implement a help-command
-- Add a config-file which is used to customize the shell
