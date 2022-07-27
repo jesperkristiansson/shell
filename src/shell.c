@@ -4,11 +4,13 @@
 #include "quit.h"
 #include "command_history.h"
 #include "config.h"
+#include "alias.h"
 #include <stdio.h>
 #include <unistd.h>
 
 void init(){
     ch_init();
+    init_aliases();
     run_config();
 }
 

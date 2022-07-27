@@ -8,7 +8,7 @@
 
 #define CONFIG_PATH_FROM_HOME "/.shell_config"
 
-void run_config(){
+void run_config(){                  //check if config file exists
     char path[MAXBUF];
     strncpy(path, getenv("HOME"), MAXBUF-strlen(CONFIG_PATH_FROM_HOME));
     strcat(path, CONFIG_PATH_FROM_HOME);

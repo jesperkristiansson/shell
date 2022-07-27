@@ -12,7 +12,6 @@ bool end_of_token(char c){
         case '<':
         case '|':
         case '&':
-        case '\"':
             return true;
         default:
             return false;
@@ -38,7 +37,7 @@ token_t get_token(char *str, char **token_ptr){
         case RAW:
             type = RAW;
             while(str[++str_pos] != '\"'){
-                if(str_pos >= MAXBUF){
+                if(str_pos >= MAXBUF || str[str_pos] == '\0'){
                     print_error("No closing \"\n");
                     return -1;
                 }

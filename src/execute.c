@@ -4,6 +4,7 @@
 #include "error.h"
 #include "quit.h"
 #include "command_history.h"
+#include "alias.h"
 #include <wordexp.h>
 #include <stdbool.h>
 #include <unistd.h>
@@ -78,6 +79,42 @@ void print_history(){
     }
 }
 
+void alias(int argc, char **argv){
+    if(argc == 1){
+        string_map_node *current = get_alias_list()->head;
+        while(current){
+            printf("%s='%s'\n", current->key, current->val);
+            current = current->next;
+        }
+    } else{
+        for(int i = 1; i < argc; ++i){      //if it follows key=value, assign it
+            char *val_index;
+            for(val_index = argv[i]; *val_index != '\0' && *val_index != '='; ++val_index);     //step val_index forward until it passes the first '='
+            if(*val_index == '='){
+                *val_index++ = '\0';
+                set_alias(argv[i], val_index);
+            } else{
+                char *cmd = get_alias(argv[i]);
+                if(cmd){
+                    printf("%s='%s'\n", argv[i], cmd);
+                } else{
+                    printf("%s: %s: not found\n", argv[0], argv[i]);
+                }
+            }
+        }
+    }
+}
+
+void unalias(int argc, char **argv){
+    if(argc > 1){
+        for(int i = 1; i < argc; ++i){
+            if(!unset_alias(argv[i])){
+                printf("%s: %s: not found\n", argv[0], argv[i]);
+            }
+        }
+    }
+}
+
 bool check_builtins(int argc, char **argv){
     char *progname = argv[0];
     if(strcmp(progname, "cd") == 0){
@@ -93,6 +130,12 @@ bool check_builtins(int argc, char **argv){
         return true;
     }else if(strcmp(progname, "history") == 0){
         print_history();
+        return true;
+    } else if(strcmp(progname, "alias") == 0){
+        alias(argc, argv);
+        return true;
+    } else if(strcmp(progname, "unalias") == 0){
+        unalias(argc, argv);
         return true;
     }
     return false;
@@ -189,6 +232,12 @@ void parse_line(char *input){
                 if(argc == 0){
                     return;
                 }
+
+                char *aliased_command = get_alias(tokens[0]);
+                if(aliased_command){
+                    tokens[0] = aliased_command;
+                }
+
                 if(strcmp(tokens[0], "ls") == 0){
                     tokens[argc++] = "--color=auto";
                 }   
