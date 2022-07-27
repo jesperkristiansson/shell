@@ -3,11 +3,13 @@
 #include "execute.h"
 #include "quit.h"
 #include "command_history.h"
+#include "config.h"
 #include <stdio.h>
 #include <unistd.h>
 
 void init(){
     ch_init();
+    run_config();
 }
 
 int main(int argc, char **argv){
