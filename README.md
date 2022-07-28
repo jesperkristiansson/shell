@@ -18,7 +18,7 @@ This project is being developed for, and has only been tested on Ubuntu 20.04, o
 - Run multiple programs with one line of input by seperating them with `;`, e.g. `program; program`
 - Move cursor using left and right arrow keys
   - Used CTRL+ARROWKEY to move the cursor whole words at a time
-  - Insertion and deletion(currently only works with backspace, support for the delete-button is coming) works wherever the cursor is located
+  - Insertion and deletion works wherever the cursor is located
 - Delete whole words using CTRL+W
 - CTRL+C erases the current input
 - CTRL+U and CTRL+K erases all input before or after the cursor, respectively
