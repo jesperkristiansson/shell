@@ -239,34 +239,45 @@ static void remove_input(){
 static void handle_escape_sequence(){
     char buf[5];
     buf[0] = getchar(); 
-    if(buf[0] == '['){
-        buf[1] = getchar();
-        switch(buf[1]){
-            case ARROW_UP:
-            case ARROW_DOWN:
-            case ARROW_RIGHT:
-            case ARROW_LEFT:
-                handle_arrow_key(buf[1]);
-                break;
-            case '1':
-                buf[2] = getchar();
-                buf[3] = getchar();
-                buf[4] = getchar();
-                if(buf[2] == ';' && buf[3] == '5'){
-                    if(buf[4] == ARROW_LEFT){
-                        while(handle_arrow_key(buf[4]) && input[INPUT_POS-1] != ' ');
-                    } else if(buf[4] == ARROW_RIGHT){
-                        while(handle_arrow_key(buf[4]) && input[INPUT_POS] != ' ');
+    switch(buf[0]){
+        case '[':
+            buf[1] = getchar();
+            switch(buf[1]){
+                case ARROW_UP:
+                case ARROW_DOWN:
+                case ARROW_RIGHT:
+                case ARROW_LEFT:
+                    handle_arrow_key(buf[1]);
+                    break;
+                case '1':
+                    buf[2] = getchar();
+                    buf[3] = getchar();
+                    buf[4] = getchar();
+                    if(buf[2] == ';' && buf[3] == '5'){
+                        if(buf[4] == ARROW_LEFT){
+                            while(handle_arrow_key(buf[4]) && input[INPUT_POS-1] != ' ');   //move to the start of word
+                        } else if(buf[4] == ARROW_RIGHT){
+                            while(handle_arrow_key(buf[4]) && input[INPUT_POS] != ' ');     //move to the end of word
+                        }
                     }
-                }
-                break;
-            case '3':
-                buf[2] = getchar();
-                if(buf[2] == '~'){
-                    delete_next_char(input);
-                }
-                break;
-        }
+                    break;
+                case '3':
+                    buf[2] = getchar();
+                    if(buf[2] == '~'){
+                        delete_next_char(input);
+                    }
+                    break;
+            }
+            break;
+        case 'b':
+            while(handle_arrow_key(ARROW_LEFT) && input[INPUT_POS-1] != ' ');     //move to the start of word
+            break;
+        case 'f':
+            while(handle_arrow_key(ARROW_RIGHT) && input[INPUT_POS] != ' ');   //move to the end of word
+            break;
+        default:
+            printf("Received character: %d\n", buf[0]);
+            break;
     }
 }
 
